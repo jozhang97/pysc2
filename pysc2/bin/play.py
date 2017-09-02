@@ -135,14 +135,31 @@ def main(unused_argv):
       controller.join_game(join)
     else:
       info = controller.replay_info(replay_data)
-      print(" Replay info ".center(60, "-"))
+      print(" Replay info hi hello world ".center(60, "-"))
       print(info)
       print("-" * 60)
       map_path = FLAGS.map_path or info.local_map_path
       if map_path:
         start_replay.map_data = run_config.map_data(map_path)
       controller.start_replay(start_replay)
-
+"""------------------- Direct to change to Game START -----------------------"""
+      map_inst = maps.get("Simple64")
+      if map_inst.game_steps_per_episode:
+        max_episode_steps = map_inst.game_steps_per_episode
+      create = sc_pb.RequestCreateGame(
+            realtime=FLAGS.realtime,
+            disable_fog=FLAGS.disable_fog,
+            local_map=sc_pb.LocalMap(map_path=map_inst.path,
+                                     map_data=map_inst.data(run_config)))
+      create.player_setup.add(type=sc_pb.Participant)
+      create.player_setup.add(type=sc_pb.Computer,
+                            race=sc2_env.races[FLAGS.bot_race],
+                            difficulty=sc2_env.difficulties[FLAGS.difficulty])
+      join = sc_pb.RequestJoinGame(race=sc2_env.races[FLAGS.user_race],
+                                 options=interface)
+      controller.create_game(create)
+      controller.join_game(join)
+"""------------------- Direct to change to Game END -------------------------"""
     if FLAGS.render:
       renderer = renderer_human.RendererHuman(
           fps=FLAGS.fps, step_mul=FLAGS.step_mul,
