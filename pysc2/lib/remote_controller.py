@@ -102,6 +102,7 @@ class RemoteController(object):
   @sw.decorate
   def create_game(self, req_create_game):
     """Create a new game. This can only be done by the host."""
+    print("Controller -- Creating game")
     return self._client.send(create_game=req_create_game)
 
   @valid_status(Status.launched)
@@ -117,6 +118,7 @@ class RemoteController(object):
   @sw.decorate
   def join_game(self, req_join_game):
     """Join a game, done by all connected clients."""
+    print("Controller -- Joining game")
     return self._client.send(join_game=req_join_game)
 
   @valid_status(Status.ended, Status.in_game)

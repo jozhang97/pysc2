@@ -32,6 +32,9 @@ from pysc2.lib import app
 import gflags as flags
 from s2clientprotocol import sc2api_pb2 as sc_pb
 
+import pdb
+
+
 FLAGS = flags.FLAGS
 flags.DEFINE_bool("render", True, "Whether to render with pygame.")
 flags.DEFINE_bool("realtime", False, "Whether to run in realtime mode.")
