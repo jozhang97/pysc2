@@ -36,7 +36,7 @@ import pdb
 
 
 FLAGS = flags.FLAGS
-flags.DEFINE_bool("render", True, "Whether to render with pygame.")
+flags.DEFINE_bool("render", False, "Whether to render with pygame.")
 flags.DEFINE_bool("realtime", False, "Whether to run in realtime mode.")
 flags.DEFINE_bool("full_screen", False, "Whether to run full screen.")
 
@@ -142,24 +142,6 @@ def main(unused_argv):
       if map_path:
         start_replay.map_data = run_config.map_data(map_path)
       controller.start_replay(start_replay)
-"""------------------- Direct to change to Game START -----------------------"""
-      map_inst = maps.get("Simple64")
-      if map_inst.game_steps_per_episode:
-        max_episode_steps = map_inst.game_steps_per_episode
-      create = sc_pb.RequestCreateGame(
-            realtime=FLAGS.realtime,
-            disable_fog=FLAGS.disable_fog,
-            local_map=sc_pb.LocalMap(map_path=map_inst.path,
-                                     map_data=map_inst.data(run_config)))
-      create.player_setup.add(type=sc_pb.Participant)
-      create.player_setup.add(type=sc_pb.Computer,
-                            race=sc2_env.races[FLAGS.bot_race],
-                            difficulty=sc2_env.difficulties[FLAGS.difficulty])
-      join = sc_pb.RequestJoinGame(race=sc2_env.races[FLAGS.user_race],
-                                 options=interface)
-      controller.create_game(create)
-      controller.join_game(join)
-"""------------------- Direct to change to Game END -------------------------"""
     if FLAGS.render:
       renderer = renderer_human.RendererHuman(
           fps=FLAGS.fps, step_mul=FLAGS.step_mul,
@@ -170,12 +152,34 @@ def main(unused_argv):
           save_replay=FLAGS.save_replay)
     else:  # Still step forward so the Mac/Windows renderer works.
       try:
+        i = 0
         while True:
           frame_start_time = time.time()
           if not FLAGS.realtime:
             controller.step(FLAGS.step_mul)
           obs = controller.observe()
+          if i == 500:
+              map_inst = maps.get("Simple64")
+              if map_inst.game_steps_per_episode:
+                max_episode_steps = map_inst.game_steps_per_episode
 
+              create = sc_pb.RequestCreateGame(
+                    realtime=FLAGS.realtime,
+                    disable_fog=FLAGS.disable_fog,
+                    local_map=sc_pb.LocalMap(map_path=map_inst.path,
+                                             map_data=map_inst.data(run_config)))
+              create.player_setup.add(type=sc_pb.Participant)
+              create.player_setup.add(type=sc_pb.Computer,
+                                    race=sc2_env.races[FLAGS.bot_race],
+                                    difficulty=sc2_env.difficulties[FLAGS.difficulty])
+
+              join = sc_pb.RequestJoinGame(race=sc2_env.races[FLAGS.user_race],
+                                         options=interface)
+              controller.create_game(create)
+              controller.join_game(join)
+
+          i += 1
+          print("Score: ", obs.observation.score.score)
           if obs.player_result:
             break
           time.sleep(max(0, frame_start_time + 1 / FLAGS.fps - time.time()))

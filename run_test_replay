@@ -1,1 +1,1 @@
-python -m pysc2.bin.play --replay RandomAgent/test.SC2Replay
+python -m pysc2.bin.play --replay RandomAgent/test.SC2Replay 
