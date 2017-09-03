@@ -36,7 +36,7 @@ import pdb
 
 
 FLAGS = flags.FLAGS
-flags.DEFINE_bool("render", True, "Whether to render with pygame.")
+flags.DEFINE_bool("render", False, "Whether to render with pygame.")
 flags.DEFINE_bool("realtime", False, "Whether to run in realtime mode.")
 flags.DEFINE_bool("full_screen", False, "Whether to run full screen.")
 
@@ -106,6 +106,7 @@ def main(unused_argv):
 
   max_episode_steps = FLAGS.max_episode_steps
 
+
   if FLAGS.map:
     map_inst = maps.get(FLAGS.map)
     if map_inst.game_steps_per_episode:
@@ -130,6 +131,12 @@ def main(unused_argv):
         observed_player_id=FLAGS.observed_player)
 
   with run_config.start(full_screen=FLAGS.full_screen) as controller:
+    map_instr = maps.get(FLAGS.map)
+    path = map_instr.path
+    data = map_instr.data(run_config)
+    pdb.set_trace()
+    controller.save_map(path, data)
+    
     if FLAGS.map:
       controller.create_game(create)
       controller.join_game(join)
@@ -143,6 +150,7 @@ def main(unused_argv):
         start_replay.map_data = run_config.map_data(map_path)
       controller.start_replay(start_replay)
 
+
     if FLAGS.render:
       renderer = renderer_human.RendererHuman(
           fps=FLAGS.fps, step_mul=FLAGS.step_mul,
@@ -153,6 +161,7 @@ def main(unused_argv):
           save_replay=FLAGS.save_replay)
     else:  # Still step forward so the Mac/Windows renderer works.
       try:
+        pdb.set_trace()
         while True:
           frame_start_time = time.time()
           if not FLAGS.realtime:

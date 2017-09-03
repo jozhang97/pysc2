@@ -23,6 +23,8 @@ from pysc2.lib import protocol
 from pysc2.lib import static_data
 from pysc2.lib import stopwatch
 
+import pdb
+
 from s2clientprotocol import sc2api_pb2 as sc_pb
 
 sw = stopwatch.sw
@@ -110,6 +112,8 @@ class RemoteController(object):
   @sw.decorate
   def save_map(self, map_path, map_data):
     """Save a map into temp dir so create game can access it in multiplayer."""
+    print("Saving map")
+    pdb.set_trace()
     return self._client.send(save_map=sc_pb.RequestSaveMap(
         map_path=map_path, map_data=map_data))
 
