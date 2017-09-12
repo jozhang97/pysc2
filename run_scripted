@@ -1,0 +1,2 @@
+python -m pysc2.bin.agent --agent pysc2.agents.scripted_agent.MoveToBeacon --map MoveToBeacon 
+

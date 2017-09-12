@@ -1,0 +1,1 @@
+python -m pysc2.bin.play --replay ZergRushSuccess.SC2Replay
