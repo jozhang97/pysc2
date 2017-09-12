@@ -37,6 +37,17 @@ mini_games = [
     "DefeatZerglingsAndBanelings",  # 120s
     "FindAndDefeatZerglings",  # 180s
     "MoveToBeacon",  # 120s
+    "Test",
+    "TestReplay", 
+    "DefeatZerglingsAndBanelings2",
+    "DefeatZerglingsAndBanelings3",
+    "OP_Marine",
+    "Simple64One",
+    "Simple64Two",
+    "Simple64Three",
+    "Simple64Four",
+ 
+
 ]
 
 
