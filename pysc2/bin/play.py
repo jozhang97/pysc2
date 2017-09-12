@@ -132,10 +132,9 @@ def main(unused_argv):
         observed_player_id=FLAGS.observed_player)
 
   with run_config.start(full_screen=FLAGS.full_screen) as controller:
-    map_instr = maps.get(FLAGS.map)
-    path = map_instr.path
+    path = "obs_test.SC2Map"
+    map_instr = maps.get("Simple64")
     data = map_instr.data(run_config)
-    pdb.set_trace()
     controller.save_map(path, data)
     
     if FLAGS.map:
@@ -147,10 +146,28 @@ def main(unused_argv):
       print(info)
       print("-" * 60)
       map_path = FLAGS.map_path or info.local_map_path
+
+      # FOR MY TEST REPLAY MAP ONLY 
+      ##map_inst = maps.get("CactusValleyLE")
+      ##map_path = map_inst.path
+      #ipdb.set_trace(context=11)
+      #map_path = "Ladder2017Season1/CactusValleyLE.SC2Map"
       if map_path:
         start_replay.map_data = run_config.map_data(map_path)
       controller.start_replay(start_replay)
 
+    # look here 
+    data = controller.data()
+    game_info = controller.game_info()
+    obs = controller.observe()
+    observation = obs.observation
+    #controller.leave()
+    #create = sc_pb.RequestCreateGame(local_map=sc_pb.LocalMap(
+    #        map_path=m.path, map_data=observation))
+    #controller.save_map(path, data)
+    #controller.save_map(path, game_info)
+    #controller.save_map(path, obs)
+    #controller.save_map(path, observation)
 
     if FLAGS.render:
       renderer = renderer_human.RendererHuman(
@@ -162,16 +179,20 @@ def main(unused_argv):
           save_replay=FLAGS.save_replay)
     else:  # Still step forward so the Mac/Windows renderer works.
       try:
-        pdb.set_trace()
         while True:
           frame_start_time = time.time()
           if not FLAGS.realtime:
             controller.step(FLAGS.step_mul)
+          ipdb.set_trace(context=21)
           obs = controller.observe()
-
+          data = controller.data()
+          game_info = controller.game_info()
+          data_raw = controller.data_raw()
+          # TODO Look at converting an observation into a .SC2Map
           if obs.player_result:
             break
           time.sleep(max(0, frame_start_time + 1 / FLAGS.fps - time.time()))
+          # controller.leave()
       except KeyboardInterrupt:
         pass
       print("Score: ", obs.observation.score.score)
