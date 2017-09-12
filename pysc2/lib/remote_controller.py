@@ -99,6 +99,15 @@ class RemoteController(object):
   def __init__(self, client):
     self._client = client
 
+  @valid_status(Status.in_game)
+  @decorate_check_error(sc_pb.ResponseJoinGame.Error)
+  @sw.decorate
+  def quick_save(self):
+    """Join a game, done by all connected clients."""
+    print("Controller -- Quick Save")
+    return self._client.send(quick_save=sc_pb.RequestQuickSave())
+
+
   @valid_status(Status.launched, Status.ended, Status.in_game, Status.in_replay)
   @decorate_check_error(sc_pb.ResponseCreateGame.Error)
   @sw.decorate
@@ -113,7 +122,6 @@ class RemoteController(object):
   def save_map(self, map_path, map_data):
     """Save a map into temp dir so create game can access it in multiplayer."""
     print("Saving map")
-    pdb.set_trace()
     return self._client.send(save_map=sc_pb.RequestSaveMap(
         map_path=map_path, map_data=map_data))
 
