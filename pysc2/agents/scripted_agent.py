@@ -21,7 +21,9 @@ import numpy
 
 from pysc2.agents import base_agent
 from pysc2.lib import actions
-from pysc2.lib import features
+from pysc2.lib import features # important one. use it?
+
+import ipdb
 
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 _PLAYER_FRIENDLY = 1
@@ -37,11 +39,14 @@ _SELECT_ALL = [0]
 
 class MoveToBeacon(base_agent.BaseAgent):
   """An agent specifically for solving the MoveToBeacon map."""
-
-  def step(self, obs):
-    super(MoveToBeacon, self).step(obs)
-    if _MOVE_SCREEN in obs.observation["available_actions"]:
-      player_relative = obs.observation["screen"][_PLAYER_RELATIVE]
+  
+# features.Features
+  def step(self, timestep):
+    super(MoveToBeacon, self).step(timestep)
+    ipdb.set_trace(context=21)
+    step_type, reward, discount, obs = timestep
+    if _MOVE_SCREEN in timestep.observation["available_actions"]:
+      player_relative = timestep.observation["screen"][_PLAYER_RELATIVE]
       neutral_y, neutral_x = (player_relative == _PLAYER_NEUTRAL).nonzero()
       if not neutral_y.any():
         return actions.FunctionCall(_NO_OP, [])
@@ -54,10 +59,10 @@ class MoveToBeacon(base_agent.BaseAgent):
 class CollectMineralShards(base_agent.BaseAgent):
   """An agent specifically for solving the CollectMineralShards map."""
 
-  def step(self, obs):
-    super(CollectMineralShards, self).step(obs)
-    if _MOVE_SCREEN in obs.observation["available_actions"]:
-      player_relative = obs.observation["screen"][_PLAYER_RELATIVE]
+  def step(self, timestep):
+    super(CollectMineralShards, self).step(timestep)
+    if _MOVE_SCREEN in timestep.observation["available_actions"]:
+      player_relative = timestep.observation["screen"][_PLAYER_RELATIVE]
       neutral_y, neutral_x = (player_relative == _PLAYER_NEUTRAL).nonzero()
       player_y, player_x = (player_relative == _PLAYER_FRIENDLY).nonzero()
       if not neutral_y.any() or not player_y.any():
@@ -76,17 +81,17 @@ class CollectMineralShards(base_agent.BaseAgent):
 class DefeatRoaches(base_agent.BaseAgent):
   """An agent specifically for solving the DefeatRoaches map."""
 
-  def step(self, obs):
-    super(DefeatRoaches, self).step(obs)
-    if _ATTACK_SCREEN in obs.observation["available_actions"]:
-      player_relative = obs.observation["screen"][_PLAYER_RELATIVE]
+  def step(self, timestep):
+    super(DefeatRoaches, self).step(timestep)
+    if _ATTACK_SCREEN in timestep.observation["available_actions"]:
+      player_relative = timestep.observation["screen"][_PLAYER_RELATIVE]
       roach_y, roach_x = (player_relative == _PLAYER_HOSTILE).nonzero()
       if not roach_y.any():
         return actions.FunctionCall(_NO_OP, [])
       index = numpy.argmax(roach_y)
       target = [roach_x[index], roach_y[index]]
       return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, target])
-    elif _SELECT_ARMY in obs.observation["available_actions"]:
+    elif _SELECT_ARMY in timestep.observation["available_actions"]:
       return actions.FunctionCall(_SELECT_ARMY, [_SELECT_ALL])
     else:
       return actions.FunctionCall(_NO_OP, [])

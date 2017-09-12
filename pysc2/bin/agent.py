@@ -32,9 +32,10 @@ from pysc2.lib import stopwatch
 from pysc2.lib import app
 import gflags as flags
 
+import ipdb 
 
 FLAGS = flags.FLAGS
-flags.DEFINE_bool("render", True, "Whether to render with pygame.")
+flags.DEFINE_bool("render", False, "Whether to render with pygame.")
 flags.DEFINE_integer("screen_resolution", 84,
                      "Resolution for screen feature layers.")
 flags.DEFINE_integer("minimap_resolution", 64,
@@ -81,6 +82,7 @@ def run_thread(agent_cls, map_name, visualize):
 
 def main(unused_argv):
   """Run an agent."""
+  ipdb.set_trace(context=21)
   stopwatch.sw.enabled = FLAGS.profile or FLAGS.trace
   stopwatch.sw.trace = FLAGS.trace
 

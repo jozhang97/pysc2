@@ -32,7 +32,8 @@ from pysc2.lib import app
 import gflags as flags
 from s2clientprotocol import sc2api_pb2 as sc_pb
 
-import pdb
+from pysc2.lib import features
+import ipdb
 
 
 FLAGS = flags.FLAGS
