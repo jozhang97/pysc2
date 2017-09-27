@@ -72,7 +72,7 @@ def run_thread(agent_cls, map_name, visualize):
       screen_size_px=(FLAGS.screen_resolution, FLAGS.screen_resolution),
       minimap_size_px=(FLAGS.minimap_resolution, FLAGS.minimap_resolution),
       visualize=visualize) as env:
-    env = available_actions_printer.AvailableActionsPrinter(env)
+    # env = available_actions_printer.AvailableActionsPrinter(env)
     agent = agent_cls()
     run_loop.run_loop([agent], env, FLAGS.max_agent_steps)
     if FLAGS.save_replay:
