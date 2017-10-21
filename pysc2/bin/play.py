@@ -33,7 +33,7 @@ import gflags as flags
 from s2clientprotocol import sc2api_pb2 as sc_pb
 
 FLAGS = flags.FLAGS
-flags.DEFINE_bool("render", True, "Whether to render with pygame.")
+flags.DEFINE_bool("render", False, "Whether to render with pygame.")
 flags.DEFINE_bool("realtime", False, "Whether to run in realtime mode.")
 flags.DEFINE_bool("full_screen", False, "Whether to run full screen.")
 
