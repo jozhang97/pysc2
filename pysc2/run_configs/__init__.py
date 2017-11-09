@@ -20,15 +20,17 @@ from __future__ import print_function
 from pysc2.run_configs import platforms
 from pysc2.run_configs import lib
 
+import sys
 from absl import flags
 
 flags.DEFINE_string("sc2_run_config", None,
                     "Which run_config to use to spawn the binary.")
 FLAGS = flags.FLAGS
 
-
 def get():
   """Get the config chosen by the flags."""
+
+  FLAGS(sys.argv)
   configs = {c.name(): c
              for c in lib.RunConfig.all_subclasses() if c.priority()}
 
