@@ -303,7 +303,11 @@ class RendererHuman(object):
       # Enable DPI awareness on Windows to give the correct window size.
       ctypes.windll.user32.SetProcessDPIAware()
 
-    pygame.init()
+    import ipdb; ipdb.set_trace(context=21)
+    os.environ["SDL_VIDEODRIVER"] = "dummy"
+    pygame_init = pygame.init()
+    print("init", pygame_init)
+    print("List_modes", pygame.display.list_modes())
 
     if self._render_rgb and self._rgb_screen_px:
       main_screen_px = self._rgb_screen_px
@@ -327,9 +331,12 @@ class RendererHuman(object):
 
     window_size_px = window_size_ratio.scale_max_size(
         _get_max_window_size()).ceil()
+    # PROBLEM: This line gives us Point(0, 0)
 
     # Create the actual window surface. This should only be blitted to from one
     # of the sub-surfaces defined below.
+    
+    window_size_px = window_size_ratio.ceil()
     self._window = pygame.display.set_mode(window_size_px, 0, 32)
     pygame.display.set_caption("Starcraft Viewer")
 
