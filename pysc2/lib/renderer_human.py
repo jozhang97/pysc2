@@ -31,7 +31,7 @@ import enum
 from future.builtins import range  # pylint: disable=redefined-builtin
 import numpy as np
 import pygame
-from six.moves import queue
+import queue
 from pysc2.lib import colors
 from pysc2.lib import features
 from pysc2.lib import point
@@ -43,6 +43,10 @@ from pysc2.lib import video_writer
 from s2clientprotocol import data_pb2 as sc_data
 from s2clientprotocol import sc2api_pb2 as sc_pb
 from s2clientprotocol import spatial_pb2 as sc_spatial
+
+# Disable attribute-error because of the multiple stages of initialization for
+# RendererHuman.
+# pytype: disable=attribute-error
 
 sw = stopwatch.sw
 
@@ -206,7 +210,8 @@ class RendererHuman(object):
       ("?", "This help screen"),
   ]
 
-  def __init__(self, fps=22.4, step_mul=1, render_sync=False, video=None):
+  def __init__(self, fps=22.4, step_mul=1, render_sync=False,
+               render_feature_grid=True, video=None):
     """Create a renderer for use by humans.
 
     Make sure to call `init` with the game info, or just use `run`.
@@ -215,12 +220,15 @@ class RendererHuman(object):
       fps: How fast should the game be run.
       step_mul: How many game steps to take per observation.
       render_sync: Whether to wait for the obs to render before continuing.
+      render_feature_grid: When RGB and feature layers are available, whether
+          to render the grid of feature layers.
       video: A filename to write the video to. Implicitly enables render_sync.
     """
     self._fps = fps
     self._step_mul = step_mul
     self._render_sync = render_sync or bool(video)
     self._render_rgb = None
+    self._render_feature_grid = render_feature_grid
     self._window = None
     self._obs_queue = queue.Queue()
     self._render_thread = threading.Thread(target=self.render_thread,
@@ -257,6 +265,10 @@ class RendererHuman(object):
     """
     self._game_info = game_info
     self._static_data = static_data
+
+    if not game_info.HasField("start_raw"):
+      raise ValueError("Raw observations are required for the renderer.")
+
     self._map_size = point.Point.build(game_info.start_raw.map_size)
 
     if game_info.options.HasField("feature_layer"):
@@ -290,10 +302,10 @@ class RendererHuman(object):
       logging.error("-" * 60)
 
     self._obs = sc_pb.ResponseObservation()
-    self.queued_action = None
-    self.queued_hotkey = ""
-    self.select_start = None
-    self.help = False
+    self._queued_action = None
+    self._queued_hotkey = ""
+    self._select_start = None
+    self._help = False
 
   @with_lock(render_lock)
   @sw.decorate
@@ -301,7 +313,7 @@ class RendererHuman(object):
     """Initialize the pygame window and lay out the surfaces."""
     if os.name == "nt":
       # Enable DPI awareness on Windows to give the correct window size.
-      ctypes.windll.user32.SetProcessDPIAware()
+      ctypes.windll.user32.SetProcessDPIAware()  # pytype: disable=module-attr
 
     pygame.init()
 
@@ -311,7 +323,7 @@ class RendererHuman(object):
       main_screen_px = self._feature_screen_px
 
     window_size_ratio = main_screen_px
-    if self._feature_screen_px:
+    if self._feature_screen_px and self._render_feature_grid:
       # Want a roughly square grid of feature layers, each being roughly square.
       num_feature_layers = (len(features.SCREEN_FEATURES) +
                             len(features.MINIMAP_FEATURES))
@@ -334,17 +346,17 @@ class RendererHuman(object):
     pygame.display.set_caption("Starcraft Viewer")
 
     # The sub-surfaces that the various draw functions will draw to.
-    self.surfaces = []
+    self._surfaces = []
     def add_surface(surf_type, surf_loc, world_to_surf, world_to_obs, draw_fn):
       """Add a surface. Drawn in order and intersect in reverse order."""
       sub_surf = self._window.subsurface(
           pygame.Rect(surf_loc.tl, surf_loc.size))
-      self.surfaces.append(_Surface(
+      self._surfaces.append(_Surface(
           sub_surf, surf_type, surf_loc, world_to_surf, world_to_obs, draw_fn))
 
-    self.scale = window_size_px.y // 30
-    self.font_small = pygame.font.Font(None, int(self.scale * 0.5))
-    self.font_large = pygame.font.Font(None, self.scale)
+    self._scale = window_size_px.y // 30
+    self._font_small = pygame.font.Font(None, int(self._scale * 0.5))
+    self._font_large = pygame.font.Font(None, self._scale)
 
     def check_eq(a, b):
       """Used to run unit tests on the transforms."""
@@ -491,7 +503,7 @@ class RendererHuman(object):
                   self._world_to_feature_minimap_px,
                   self.draw_mini_map)
 
-    if self._feature_screen_px:
+    if self._feature_screen_px and self._render_feature_grid:
       # Add the feature layers
       features_loc = point.Point(screen_size_px.x, 0)
       feature_pane = self._window.subsurface(
@@ -552,7 +564,7 @@ class RendererHuman(object):
     help_size = point.Point(
         (max(len(s) for s, _ in self.shortcuts) +
          max(len(s) for _, s in self.shortcuts)) * 0.4 + 4,
-        len(self.shortcuts) + 3) * self.scale
+        len(self.shortcuts) + 3) * self._scale
     help_rect = point.Rect(window_size_px / 2 - help_size / 2,
                            window_size_px / 2 + help_size / 2)
     add_surface(SurfType.CHROME, help_rect, None, None, self.draw_help)
@@ -586,7 +598,7 @@ class RendererHuman(object):
     window_pos = window_pos or pygame.mouse.get_pos()
     # +0.5 to center the point on the middle of the pixel.
     window_pt = point.Point(*window_pos) + 0.5
-    for surf in reversed(self.surfaces):
+    for surf in reversed(self._surfaces):
       if (surf.surf_type != SurfType.CHROME and
           surf.surf_rect.contains_point(window_pt)):
         surf_rel_pt = window_pt - surf.surf_rect.tl
@@ -594,8 +606,8 @@ class RendererHuman(object):
         return MousePos(world_pt, surf)
 
   def clear_queued_action(self):
-    self.queued_hotkey = ""
-    self.queued_action = None
+    self._queued_hotkey = ""
+    self._queued_action = None
 
   def save_replay(self, run_config, controller):
     replay_path = run_config.save_replay(
@@ -609,13 +621,15 @@ class RendererHuman(object):
       return ActionCmd.STEP
 
     for event in pygame.event.get():
+      ctrl = pygame.key.get_mods() & pygame.KMOD_CTRL
+      shift = pygame.key.get_mods() & pygame.KMOD_SHIFT
       if event.type == pygame.QUIT:
         return ActionCmd.QUIT
       elif event.type == pygame.KEYDOWN:
-        if self.help:
-          self.help = False
+        if self._help:
+          self._help = False
         elif event.key in (pygame.K_QUESTION, pygame.K_SLASH):
-          self.help = True
+          self._help = True
         elif event.key == pygame.K_PAUSE:
           pause = True
           while pause:
@@ -642,14 +656,12 @@ class RendererHuman(object):
           print("Rendering", self._render_sync and "Sync" or "Async")
         elif event.key == pygame.K_F9:  # Save a replay.
           self.save_replay(run_config, controller)
-        elif (event.key in (pygame.K_PLUS, pygame.K_EQUALS) and
-              pygame.key.get_mods() & pygame.KMOD_CTRL):  # zoom in
-          self.zoom(1.1)
-        elif (event.key in (pygame.K_MINUS, pygame.K_UNDERSCORE) and
-              pygame.key.get_mods() & pygame.KMOD_CTRL):  # zoom out
-          self.zoom(1 / 1.1)
+        elif event.key in (pygame.K_PLUS, pygame.K_EQUALS) and ctrl:
+          self.zoom(1.1)  # zoom in
+        elif event.key in (pygame.K_MINUS, pygame.K_UNDERSCORE) and ctrl:
+          self.zoom(1 / 1.1)  # zoom out
         elif event.key in (pygame.K_PAGEUP, pygame.K_PAGEDOWN):
-          if pygame.key.get_mods() & pygame.KMOD_CTRL:
+          if ctrl:
             if event.key == pygame.K_PAGEUP:
               self._step_mul += 1
             elif self._step_mul > 1:
@@ -665,53 +677,54 @@ class RendererHuman(object):
                     self._obs.observation.raw_data.player.camera) +
                 self.camera_actions[event.key]))
         elif event.key == pygame.K_ESCAPE:
-          cmds = self._abilities(lambda cmd: cmd.hotkey == "escape")
+          cmds = self._abilities(lambda cmd: cmd.hotkey == "escape")  # Cancel
           if cmds:
             assert len(cmds) == 1
             cmd = cmds[0]
             assert cmd.target == sc_data.AbilityData.Target.Value("None")
-            controller.act(self.unit_action(cmd))
+            controller.act(self.unit_action(cmd, None, shift))
           else:
             self.clear_queued_action()
         else:
-          if not self.queued_action:
+          if not self._queued_action:
             key = pygame.key.name(event.key).lower()
-            new_cmd = self.queued_hotkey + key
+            new_cmd = self._queued_hotkey + key
             cmds = self._abilities(lambda cmd, n=new_cmd: (  # pylint: disable=g-long-lambda
                 cmd.hotkey != "escape" and cmd.hotkey.startswith(n)))
             if cmds:
-              self.queued_hotkey = new_cmd
+              self._queued_hotkey = new_cmd
               if len(cmds) == 1:
                 cmd = cmds[0]
-                if cmd.hotkey == self.queued_hotkey:
+                if cmd.hotkey == self._queued_hotkey:
                   if cmd.target != sc_data.AbilityData.Target.Value("None"):
                     self.clear_queued_action()
-                    self.queued_action = cmd
+                    self._queued_action = cmd
                   else:
-                    controller.act(self.unit_action(cmd))
+                    controller.act(self.unit_action(cmd, None, shift))
       elif event.type == pygame.MOUSEBUTTONDOWN:
         mouse_pos = self.get_mouse_pos(event.pos)
         if event.button == MouseButtons.LEFT and mouse_pos:
-          if self.queued_action:
-            controller.act(self.unit_action(self.queued_action, mouse_pos))
+          if self._queued_action:
+            controller.act(self.unit_action(
+                self._queued_action, mouse_pos, shift))
           elif mouse_pos.surf.surf_type & SurfType.MINIMAP:
             controller.act(self.camera_action(mouse_pos))
           else:
-            self.select_start = mouse_pos
+            self._select_start = mouse_pos
         elif event.button == MouseButtons.RIGHT:
-          if self.queued_action:
+          if self._queued_action:
             self.clear_queued_action()
-          else:
-            cmds = self._abilities(lambda cmd: cmd.button_name == "Smart")
-            if cmds:
-              controller.act(self.unit_action(cmds[0], mouse_pos))
+          cmds = self._abilities(lambda cmd: cmd.button_name == "Smart")
+          if cmds:
+            controller.act(self.unit_action(cmds[0], mouse_pos, shift))
       elif event.type == pygame.MOUSEBUTTONUP:
         mouse_pos = self.get_mouse_pos(event.pos)
-        if event.button == MouseButtons.LEFT and self.select_start:
+        if event.button == MouseButtons.LEFT and self._select_start:
           if (mouse_pos and mouse_pos.surf.surf_type & SurfType.SCREEN and
-              mouse_pos.surf.surf_type == self.select_start.surf.surf_type):
-            controller.act(self.select_action(self.select_start, mouse_pos))
-          self.select_start = None
+              mouse_pos.surf.surf_type == self._select_start.surf.surf_type):
+            controller.act(self.select_action(
+                self._select_start, mouse_pos, ctrl, shift))
+          self._select_start = None
     return ActionCmd.STEP
 
   def camera_action(self, mouse_pos):
@@ -727,7 +740,7 @@ class RendererHuman(object):
     world_pos.assign_to(action.action_raw.camera_move.center_world_space)
     return action
 
-  def select_action(self, pos1, pos2):
+  def select_action(self, pos1, pos2, ctrl, shift):
     """Return a `sc_pb.Action` with the selection filled."""
     assert pos1.surf.surf_type == pos2.surf.surf_type
     assert pos1.surf.world_to_obs == pos2.surf.world_to_obs
@@ -738,13 +751,17 @@ class RendererHuman(object):
     if pos1.world_pos == pos2.world_pos:  # select a point
       select = action_spatial.unit_selection_point
       pos1.obs_pos.assign_to(select.selection_screen_coord)
-      select.type = sc_spatial.ActionSpatialUnitSelectionPoint.Select
+      mod = sc_spatial.ActionSpatialUnitSelectionPoint
+      if ctrl:
+        select.type = mod.AddAllType if shift else mod.AllType
+      else:
+        select.type = mod.Toggle if shift else mod.Select
     else:
       select = action_spatial.unit_selection_rect
       rect = select.selection_screen_coord.add()
       pos1.obs_pos.assign_to(rect.p0)
       pos2.obs_pos.assign_to(rect.p1)
-      select.selection_add = False
+      select.selection_add = shift
 
     # Clear the queued action if something will be selected. An alternative
     # implementation may check whether the selection changed next frame.
@@ -754,13 +771,14 @@ class RendererHuman(object):
 
     return action
 
-  def unit_action(self, cmd, pos=None):
+  def unit_action(self, cmd, pos, shift):
     """Return a `sc_pb.Action` filled with the cmd and appropriate target."""
     action = sc_pb.Action()
     if pos:
       action_spatial = pos.action_spatial(action)
       unit_command = action_spatial.unit_command
       unit_command.ability_id = cmd.ability_id
+      unit_command.queue_command = shift
       if pos.surf.surf_type & SurfType.SCREEN:
         pos.obs_pos.assign_to(unit_command.target_screen_coord)
       elif pos.surf.surf_type & SurfType.MINIMAP:
@@ -799,7 +817,7 @@ class RendererHuman(object):
     if key not in self._name_lengths:
       max_len = surf.world_to_surf.fwd_dist(radius * 1.6)
       for i in range(len(name)):
-        if self.font_small.size(name[:i + 1])[0] > max_len:
+        if self._font_small.size(name[:i + 1])[0] > max_len:
           self._name_lengths[key] = name[:i]
           break
       else:
@@ -829,7 +847,7 @@ class RendererHuman(object):
         name = self.get_unit_name(
             surf, self._static_data.units.get(u.unit_type, "<none>"), u.radius)
         if name:
-          text = self.font_small.render(name, True, colors.white)
+          text = self._font_small.render(name, True, colors.white)
           rect = text.get_rect()
           rect.center = surf.world_to_surf.fwd_pt(p)
           surf.surf.blit(text, rect)
@@ -840,11 +858,11 @@ class RendererHuman(object):
   @sw.decorate
   def draw_selection(self, surf):
     """Draw the selection rectange."""
-    if self.select_start:
+    if self._select_start:
       mouse_pos = self.get_mouse_pos()
       if (mouse_pos and mouse_pos.surf.surf_type & SurfType.SCREEN and
-          mouse_pos.surf.surf_type == self.select_start.surf.surf_type):
-        rect = point.Rect(self.select_start.world_pos, mouse_pos.world_pos)
+          mouse_pos.surf.surf_type == self._select_start.surf.surf_type):
+        rect = point.Rect(self._select_start.world_pos, mouse_pos.world_pos)
         surf.draw_rect(colors.green, rect, 1)
 
   @sw.decorate
@@ -852,8 +870,8 @@ class RendererHuman(object):
     """Draw the build target."""
     round_half = lambda v, cond: round(v - 0.5) + 0.5 if cond else round(v)
 
-    if self.queued_action:
-      radius = self.queued_action.footprint_radius
+    if self._queued_action:
+      radius = self._queued_action.footprint_radius
       if radius:
         pos = self.get_mouse_pos()
         if pos:
@@ -868,7 +886,7 @@ class RendererHuman(object):
   def draw_overlay(self, surf):
     """Draw the overlay describing resources."""
     player = self._obs.observation.player_common
-    text = self.font_large.render(
+    text = self._font_large.render(
         "Minerals: %s, Vespene: %s, Food: %s / %s; Score: %s, Frame: %s, "
         "FPS: G:%.1f, R:%.1f" % (
             player.minerals, player.vespene,
@@ -882,37 +900,37 @@ class RendererHuman(object):
   @sw.decorate
   def draw_help(self, surf):
     """Draw the help dialog."""
-    if not self.help:
+    if not self._help:
       return
 
     def write(line, loc):
-      surf.surf.blit(self.font_large.render(line, True, colors.black), loc)
+      surf.surf.blit(self._font_large.render(line, True, colors.black), loc)
 
     surf.surf.fill(colors.white * 0.8)
-    write("Shortcuts:", point.Point(self.scale, self.scale))
+    write("Shortcuts:", point.Point(self._scale, self._scale))
 
     align = max(len(s) for s, _ in self.shortcuts) * 0.4 + 3
     for i, (hotkey, description) in enumerate(self.shortcuts, start=2):
-      write(hotkey, point.Point(self.scale * 2, self.scale * i))
-      write(description, point.Point(self.scale * align, self.scale * i))
+      write(hotkey, point.Point(self._scale * 2, self._scale * i))
+      write(description, point.Point(self._scale * align, self._scale * i))
 
   @sw.decorate
   def draw_commands(self, surf):
     """Draw the list of available commands."""
-    y = self.scale * 2
+    y = self._scale * 2
 
     for cmd in sorted(self._abilities(), key=lambda c: c.hotkey):
       if cmd.button_name != "Smart":
-        if self.queued_action and cmd == self.queued_action:
+        if self._queued_action and cmd == self._queued_action:
           color = colors.green
-        elif self.queued_hotkey and cmd.hotkey.startswith(self.queued_hotkey):
+        elif self._queued_hotkey and cmd.hotkey.startswith(self._queued_hotkey):
           color = colors.green / 2
         else:
           color = colors.yellow
-        text = self.font_large.render(
+        text = self._font_large.render(
             "%s - %s" % (cmd.hotkey, cmd.button_name), True, color)
         surf.surf.blit(text, (3, y))
-        y += self.scale
+        y += self._scale
 
   @sw.decorate
   def draw_actions(self):
@@ -1025,10 +1043,15 @@ class RendererHuman(object):
       creep_mask = creep > 0
       creep_color = creep_feature.color(creep)
 
-      player_feature = features.MINIMAP_FEATURES.player_relative
-      player_relative = player_feature.unpack(self._obs.observation)
-      player_mask = player_relative > 0
-      player_color = player_feature.color(player_relative)
+      if self._obs.observation.player_common.player_id in (0, 16):  # observer
+        # If we're the observer, show the absolute since otherwise all player
+        # units are friendly, making it pretty boring.
+        player_feature = features.MINIMAP_FEATURES.player_id
+      else:
+        player_feature = features.MINIMAP_FEATURES.player_relative
+      player_data = player_feature.unpack(self._obs.observation)
+      player_mask = player_data > 0
+      player_color = player_feature.color(player_data)
 
       visibility = features.MINIMAP_FEATURES.visibility_map.unpack(
           self._obs.observation)
@@ -1052,12 +1075,12 @@ class RendererHuman(object):
 
   def check_valid_queued_action(self):
     # Make sure the existing command is still valid
-    if (self.queued_hotkey and not self._abilities(
-        lambda cmd: cmd.hotkey.startswith(self.queued_hotkey))):
-      self.queued_hotkey = ""
-    if (self.queued_action and not self._abilities(
-        lambda cmd: self.queued_action == cmd)):
-      self.queued_action = None
+    if (self._queued_hotkey and not self._abilities(
+        lambda cmd: cmd.hotkey.startswith(self._queued_hotkey))):
+      self._queued_hotkey = ""
+    if (self._queued_action and not self._abilities(
+        lambda cmd: self._queued_action == cmd)):
+      self._queued_action = None
 
   @sw.decorate
   def draw_rendered_map(self, surf):
@@ -1089,7 +1112,7 @@ class RendererHuman(object):
       surf.surf.fill(colors.black)
 
   def all_surfs(self, fn, *args, **kwargs):
-    for surf in self.surfaces:
+    for surf in self._surfaces:
       if surf.world_to_surf:
         fn(surf, *args, **kwargs)
 
@@ -1131,7 +1154,7 @@ class RendererHuman(object):
     self._update_camera(point.Point.build(
         self._obs.observation.raw_data.player.camera))
 
-    for surf in self.surfaces:
+    for surf in self._surfaces:
       # Render that surface.
       surf.draw(surf)
 
@@ -1148,17 +1171,19 @@ class RendererHuman(object):
 
     self._render_times.append(time.time() - start_time)
 
-  def run(self, run_config, controller, max_game_steps=0,
+  def run(self, run_config, controller, max_game_steps=0, max_episodes=0,
           game_steps_per_episode=0, save_replay=False):
     """Run loop that gets observations, renders them, and sends back actions."""
     is_replay = (controller.status == remote_controller.Status.in_replay)
     total_game_steps = 0
     start_time = time.time()
+    num_episodes = 0
 
     try:
       while True:
         self.init(controller.game_info(), controller.data())
         episode_steps = 0
+        num_episodes += 1
 
         controller.step()
 
@@ -1202,6 +1227,9 @@ class RendererHuman(object):
 
         if save_replay:
           self.save_replay(run_config, controller)
+
+        if max_episodes and num_episodes >= max_episodes:
+          break
 
         print("Restarting")
         controller.restart()

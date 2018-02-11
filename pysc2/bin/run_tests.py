@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # Copyright 2017 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,24 +12,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""A random agent for starcraft."""
+"""Find and run the tests.
+
+Run as: python -m pysc2.bin.run_tests
+"""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import numpy
+from absl.testing import absltest
 
-from pysc2.agents import base_agent
-from pysc2.lib import actions
+import pysc2
 
 
-class RandomAgent(base_agent.BaseAgent):
-  """A random agent for starcraft."""
-
-  def step(self, obs):
-    super(RandomAgent, self).step(obs)
-    function_id = numpy.random.choice(obs.observation.available_actions)
-    args = [[numpy.random.randint(0, size) for size in arg.sizes]
-            for arg in self.action_spec.functions[function_id].args]
-    return actions.FunctionCall(function_id, args)
+if __name__ == '__main__':
+  absltest.main(module=pysc2)
