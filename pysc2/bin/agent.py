@@ -84,7 +84,7 @@ def run_thread(agent_classes, players, map_name, visualize):
       action_space=(FLAGS.action_space and
                     sc2_env.ActionSpace[FLAGS.action_space]),
       visualize=visualize) as env:
-    env = available_actions_printer.AvailableActionsPrinter(env)
+    #env = available_actions_printer.AvailableActionsPrinter(env)
     agents = [agent_cls() for agent_cls in agent_classes]
     run_loop.run_loop(agents, env, FLAGS.max_agent_steps)
     if FLAGS.save_replay:

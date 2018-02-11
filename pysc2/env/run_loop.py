@@ -37,8 +37,8 @@ def run_loop(agents, env, max_frames=0):
         a.reset()
       while True:
         total_frames += 1
-        actions = [agent.step(timestep)
-                   for agent, timestep in zip(agents, timesteps)]
+        actions = [agent.step(timestep, controller.observe())
+                   for agent, timestep, controller in zip(agents, timesteps, env._controllers)]
         if max_frames and total_frames >= max_frames:
           return
         if timesteps[0].last():
