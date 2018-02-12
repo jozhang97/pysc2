@@ -144,7 +144,8 @@ class NamedNumpyArray(np.ndarray):
           obj._index_names = obj._index_names[1:]
         elif isinstance(index, slice):
           # Rebuild the index of names.
-          names = sorted(obj._index_names[0].items(), key=lambda item: item[1])
+          names = sorted(obj._index_names[0].items(), key=lambda item: item[1]) 
+          # This doesn't work when the indices don't have names 
           sliced = {n: i for i, (n, _) in enumerate(names[index])}
           obj._index_names = [sliced] + obj._index_names[1:]
     return obj
@@ -154,7 +155,7 @@ class NamedNumpyArray(np.ndarray):
       indices = (indices,)
     obj = self
     if len(indices) > 1:
-      obj = obj.__getitem(indices[:-1])
+      obj = obj.__getitem__(indices[:-1])
     index = _get_index(obj, indices[-1])
     super(NamedNumpyArray, obj).__setitem__(index, value)
 
