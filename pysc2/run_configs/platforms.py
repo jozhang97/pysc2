@@ -64,7 +64,7 @@ def _read_execute_info(path, parents):
   """Read the ExecuteInfo.txt file and return the base directory."""
   path = os.path.join(path, "StarCraft II/ExecuteInfo.txt")
   if os.path.exists(path):
-    with open(path, "rb") as f:  # Binary because the game appends a '\0' :(.
+    with open(path, "rb") as f:  # Binary because the game appends a '\0' :(. Jeff: Change this to "r" if error in the platform string parsing
       for line in f:
         parts = [p.strip() for p in line.split("=")]
         if len(parts) == 2 and parts[0] == "executable":
