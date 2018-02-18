@@ -56,6 +56,29 @@ def decorate_check_error(error_enum):
     return _check_error
   return decorator
 
+def test(res, error_enum):
+  """Raise if the result has an error, otherwise return the result."""
+  if type(res) == sc_pb.ResponseObservation:
+    errs = res.action_errors
+    if len(errs) != 0:
+      print(res)
+      #import ipdb; ipdb.set_trace(context=21)
+  elif type(res) == sc_pb.ResponseAction:
+    results = res.result
+    for result in results:
+      if result != 1:
+        print(res)
+        #import ipdb; ipdb.set_trace(context=21)
+  return res
+
+def decorate_test(error_enum):
+  """Decorator to call `test` on the return value."""
+  def decorator(func):
+    @functools.wraps(func)
+    def _test(*args, **kwargs):
+      return test(func(*args, **kwargs), error_enum)
+    return _test
+  return decorator
 
 def skip_status(*skipped):
   """Decorator to skip this call if we're in one of the skipped states."""
@@ -88,6 +111,7 @@ class RemoteController(object):
   All of these are implemented as blocking calls, so wait for the response
   before returning.
 
+  WHAT?
   Many of these functions take a Request* object and respond with the
   corresponding Response* object as returned from SC2. The simpler functions
   take a value and construct the Request itself, or return something more useful
@@ -151,6 +175,7 @@ class RemoteController(object):
     return static_data.StaticData(self.data_raw())
 
   @valid_status(Status.in_game, Status.in_replay, Status.ended)
+  @decorate_test(sc_pb.ResponseObservation)
   @sw.decorate
   def observe(self):
     """Get a current observation."""
@@ -164,6 +189,7 @@ class RemoteController(object):
 
   @skip_status(Status.in_replay)
   @valid_status(Status.in_game)
+  @decorate_test(sc_pb.ResponseAction)
   @sw.decorate
   def actions(self, req_action):
     """Send a `sc_pb.RequestAction`, which may include multiple actions."""
