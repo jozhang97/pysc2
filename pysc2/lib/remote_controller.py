@@ -61,14 +61,19 @@ def test(res, error_enum):
   if type(res) == sc_pb.ResponseObservation:
     errs = res.action_errors
     if len(errs) != 0:
-      print(res)
-      #import ipdb; ipdb.set_trace(context=21)
+      print(errs)
+      import ipdb; ipdb.set_trace(context=21)
+      #e.g. CantFindPlacementLocation
+      #e.g. NotEnoughFood
   elif type(res) == sc_pb.ResponseAction:
     results = res.result
     for result in results:
       if result != 1:
-        print(res)
+        return res 
+        #print(res)
         #import ipdb; ipdb.set_trace(context=21)
+        #e.g. 1342 - Train drone
+        #e.g. NO_OP ? Investigate empty action TODO 
   return res
 
 def decorate_test(error_enum):
