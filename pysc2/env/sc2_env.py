@@ -112,7 +112,8 @@ class SC2Env(environment.Base):
                game_steps_per_episode=None,
                score_index=None,
                score_multiplier=None,
-               random_seed=None):
+               random_seed=None,
+               disable_fog=True):
     """Create a SC2 Env.
 
     You must pass a resolution that you want to play at. You can send either
@@ -248,6 +249,7 @@ class SC2Env(environment.Base):
     self._replay_dir = replay_dir
     self._total_steps = 0
     self._random_seed = random_seed
+    self._disable_fog = disable_fog
 
     if score_index is None:
       self._score_index = self._map.score_index
@@ -307,9 +309,11 @@ class SC2Env(environment.Base):
     self._controllers = [p.controller for p in self._sc2_procs]
 
     # Create the game.
-    create = sc_pb.RequestCreateGame(local_map=sc_pb.LocalMap(
-        map_path=self._map.path,
-        map_data=self._run_config.map_data(self._map.path)))
+    create = sc_pb.RequestCreateGame(
+        disable_fog=self._disable_fog, 
+        local_map=sc_pb.LocalMap(
+            map_path=self._map.path,
+            map_data=self._run_config.map_data(self._map.path)))
     agent_race = Race.random
     for p in self._players:
       if isinstance(p, Agent):
@@ -342,8 +346,10 @@ class SC2Env(environment.Base):
         for c in self._controllers)
 
     # Create the game. Set the first instance as the host.
-    create = sc_pb.RequestCreateGame(local_map=sc_pb.LocalMap(
-        map_path=self._map.path))
+    create = sc_pb.RequestCreateGame(
+        disable_fog=self._disable_fog, 
+        local_map=sc_pb.LocalMap(
+            map_path=self._map.path))
     if self._random_seed is not None:
       create.random_seed = self._random_seed
     for p in self._players:
