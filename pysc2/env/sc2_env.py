@@ -424,12 +424,21 @@ class SC2Env(environment.Base):
     if self._state == environment.StepType.LAST:
       return self.reset()
 
-    self._parallel.run(
+    res = self._parallel.run(
         (c.act, self._features.transform_action(o.observation, a))
         for c, o, a in zip(self._controllers, self._obs, actions))
+    
+    #if res[0].result[0] != 1:
+    #      import ipdb; ipdb.set_trace(context=21)
 
     self._state = environment.StepType.MID
-    return self._step()
+
+    # think about this in mp 
+    timesteps = self._step()
+    _, _, _, obs = timesteps[0]
+    obs['action_info'] = (actions, res) 
+    # Note:  NO_OP will give error response
+    return timesteps
 
   def _step(self):
     self._parallel.run((c.step, self._step_mul) for c in self._controllers)
