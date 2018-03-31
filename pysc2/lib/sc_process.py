@@ -87,6 +87,8 @@ class StarcraftProcess(object):
       with sw("startup"):
         self._controller.ping()
     except:
+      print("HELLO HELLO" * 10)
+      print("B" * 40)
       self.close()
       raise
 
