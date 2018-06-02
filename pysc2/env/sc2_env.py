@@ -112,6 +112,7 @@ class SC2Env(environment.Base):
                game_steps_per_episode=None,
                score_index=None,
                score_multiplier=None,
+               use_feature_units=False,
                random_seed=None,
                disable_fog=True):
     """Create a SC2 Env.
@@ -169,6 +170,7 @@ class SC2Env(environment.Base):
           score_cumulative with 0 being the curriculum score. None means use
           the map default.
       score_multiplier: How much to multiply the score by. Useful for negating.
+      use_feature_units: Whether to include feature unit data in observations.
       random_seed: Random number seed to use when initializing the game. This
           lets you run repeatable games/tests.
 
@@ -269,7 +271,8 @@ class SC2Env(environment.Base):
     self._run_config = run_configs.get()
     self._parallel = run_parallel.RunParallel()  # Needed for multiplayer.
 
-    interface = sc_pb.InterfaceOptions(raw=visualize, score=True)
+    interface = sc_pb.InterfaceOptions(raw=(visualize or use_feature_units),
+                                       score=True)
     if feature_screen_px:
       interface.feature_layer.width = camera_width_world_units or 24
       feature_screen_px.assign_to(interface.feature_layer.resolution)
@@ -289,10 +292,11 @@ class SC2Env(environment.Base):
     if game_info.options.render != interface.render:
       logging.warning(
           "Actual interface options don't match requested options:\n"
-          "Requested:\n%s\n\nActual:\n%s", game_info.options, interface)
+          "Requested:\n%s\n\nActual:\n%s", interface, game_info.options)
 
     self._features = features.Features(game_info=game_info,
-                                       action_space=action_space)
+                                       action_space=action_space,
+                                       use_feature_units=use_feature_units)
     if visualize:
       self._renderer_human = renderer_human.RendererHuman()
       self._renderer_human.init(game_info, static_data)
@@ -313,7 +317,8 @@ class SC2Env(environment.Base):
         disable_fog=self._disable_fog, 
         local_map=sc_pb.LocalMap(
             map_path=self._map.path,
-            map_data=self._run_config.map_data(self._map.path)))
+            map_data=self._map.data(self._run_config)))
+
     agent_race = Race.random
     for p in self._players:
       if isinstance(p, Agent):
@@ -342,7 +347,7 @@ class SC2Env(environment.Base):
 
     # Save the maps so they can access it.
     self._parallel.run(
-        (c.save_map, self._map.path, self._run_config.map_data(self._map.path))
+        (c.save_map, self._map.path, self._map.data(self._run_config))
         for c in self._controllers)
 
     # Create the game. Set the first instance as the host.
@@ -388,11 +393,11 @@ class SC2Env(environment.Base):
 
   def observation_spec(self):
     """Look at Features for full specs."""
-    return self._features.observation_spec()
+    return (self._features.observation_spec(),) * self._num_players
 
   def action_spec(self):
     """Look at Features for full specs."""
-    return self._features.action_spec()
+    return (self._features.action_spec(),) * self._num_players
 
   def _restart(self):
     if len(self._controllers) == 1:
@@ -525,4 +530,4 @@ class SC2Env(environment.Base):
         portpicker.return_port(port)
       self._ports = None
 
-    logging.info(sw)
+    logging.info("%s", sw)
