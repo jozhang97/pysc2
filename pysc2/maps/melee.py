@@ -38,7 +38,13 @@ melee_maps = [
     "Simple96",
     "Simple128",
     "AbyssalReefLEZvZ",
-    "AbyssalReefLEZvZHive"
+    "AbyssalReefLEZvZHive",
+    "Simple64Upgraded",
+    "Simple96Upgraded",
+    "ProximaStationLE",
+    "ProximaStationLEUpgraded",
+    "ProximaStationLEUpgradedSpine",
+    "ProximaStationLEHive"
 ]
 
 for name in melee_maps:

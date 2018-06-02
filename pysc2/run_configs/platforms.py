@@ -64,7 +64,7 @@ def _read_execute_info(path, parents):
   """Read the ExecuteInfo.txt file and return the base directory."""
   path = os.path.join(path, "StarCraft II/ExecuteInfo.txt")
   if os.path.exists(path):
-    with open(path, "rb") as f:  # Binary because the game appends a '\0' :(. Jeff: Change this to "r" if error in the platform string parsing
+    with open(path, "r") as f:  # Binary because the game appends a '\0' :(. Jeff: Change this to "r" if error in the platform string parsing
       for line in f:
         parts = [p.strip() for p in line.split("=")]
         if len(parts) == 2 and parts[0] == "executable":
@@ -109,8 +109,19 @@ class LocalBase(lib.RunConfig):
       raise sc_process.SC2LaunchError(
           "SC2 Binaries older than 3.16.1 don't support the api.")
     exec_path = os.path.join(
-        self.data_dir, "Versions/Base%s" % version.build_version,
+        self.data_dir,
+        "Versions/Base%s" % version.build_version,
         self._exec_name)
+
+    # MY HACKY WAY
+    """
+    exec_path = os.path.join(
+        self.data_dir, 
+        "Versions/Base%s" % 59587,
+        self._exec_name)
+        "SC2.app"
+    )
+    """
 
     if not os.path.exists(exec_path):
       raise sc_process.SC2LaunchError("No SC2 binary found at: %s" % exec_path)
