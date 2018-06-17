@@ -41,7 +41,6 @@ melee_maps = [
     "Simple128",
     "AbyssalReefLEZvZ",
     "AbyssalReefLE",
-    "AbyssalReef",
     "AbyssalReefLEZvZHive",
     "ProximaStationLE",
     "ProximaStationLEUpgraded",
