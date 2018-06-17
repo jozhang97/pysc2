@@ -44,6 +44,7 @@ melee_maps = [
     "ProximaStationLE",
     "ProximaStationLEUpgraded",
     "ProximaStationLEUpgradedSpine",
+    "ProximaStationLEPool",
     "ProximaStationLEHive"
 ]
 
