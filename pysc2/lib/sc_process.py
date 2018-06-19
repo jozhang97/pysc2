@@ -149,7 +149,7 @@ class StarcraftProcess(object):
       time.sleep(1)
       try:
         return websocket.create_connection("ws://127.0.0.1:%s/sc2api" % port,
-                                           timeout=2 * 60)  # 2 minutes
+                                           timeout=2 * 60 * 10)  # 20 minutes TODO Change the timeout arg to make game last longer
       except socket.error:
         pass  # SC2 hasn't started listening yet.
       except websocket.WebSocketException as err:
@@ -162,7 +162,7 @@ class StarcraftProcess(object):
   def _shutdown(self):
     """Terminate the sub-process."""
     if self._proc:
-      ret = _shutdown_proc(self._proc, 3)
+      ret = _shutdown_proc(self._proc, 3 * 50)  # TODO Change the timeout arg to make it last longer
       logging.info("Shutdown with return code: %s", ret)
       self._proc = None
 
