@@ -37,7 +37,9 @@ melee_maps = [
     "Simple64",
     "Simple96",
     "Simple128",
-    "AbyssalReefLEZvZ"
+    "AbyssalReefLEZvZ",
+    "AbyssalReefLE",
+    "AbyssalReefLEZvZHive"
 ]
 
 for name in melee_maps:

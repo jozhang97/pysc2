@@ -269,7 +269,7 @@ class SC2Env(environment.Base):
     self._run_config = run_configs.get()
     self._parallel = run_parallel.RunParallel()  # Needed for multiplayer.
 
-    interface = sc_pb.InterfaceOptions(raw=visualize, score=True)
+    interface = sc_pb.InterfaceOptions(raw=True, score=True)
     if feature_screen_px:
       interface.feature_layer.width = camera_width_world_units or 24
       feature_screen_px.assign_to(interface.feature_layer.resolution)

@@ -42,7 +42,6 @@ for name in ladder_seasons:
 
 # pylint: disable=bad-whitespace, undefined-variable
 ladder_maps = [
-    ("AbyssalReef",          Ladder2017Season3, "AbyssalReefLE", 2),
     ("Acolyte",              Ladder2017Season3, "AcolyteLE", 2),
     ("AscensiontoAiur",      Ladder2017Season3, "AscensiontoAiurLE", 2),
     ("BelShirVestige",       Ladder2017Season1, "BelShirVestigeLE", 2),
@@ -58,6 +57,7 @@ ladder_maps = [
     ("PaladinoTerminal",     Ladder2017Season1, "PaladinoTerminalLE", 2),
     ("ProximaStation",       Ladder2017Season2, "ProximaStationLE", 2),
     ("Sequencer",            Ladder2017Season2, "SequencerLE", 2),
+    ("AbyssalReef",          Ladder2017Season1, "AbyssalReefLE", 2),
 ]
 # pylint: enable=bad-whitespace, undefined-variable
 
